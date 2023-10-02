@@ -23,10 +23,14 @@ export default function Home() {
       <RefreshSettings
         isRefreshEnabled={isRefreshEnabled}
         refreshIntervalSeconds={refreshIntervalSeconds}
-        onRefreshIntervalChange={(event) =>
-          setRefreshIntervalSeconds(event.target.value)
-        }
-        onRefreshToggleChange={() => setIsRefreshEnabled(!isRefreshEnabled)}
+        onRefreshIntervalChange={(event) => {
+          console.log("Interval Change");
+          setRefreshIntervalSeconds(event.target.value);
+        }}
+        onRefreshToggleChange={() => {
+          console.log("Toggled Change");
+          setIsRefreshEnabled(!isRefreshEnabled);
+        }}
       />
       <Header />
       <ProjectList
