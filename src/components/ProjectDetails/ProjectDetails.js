@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
-import './ProjectDetails.css';
-var axios = require('axios');
+import React, { Component } from "react";
+import "./ProjectDetails.css";
+var axios = require("axios");
 
 const params = {};
 
@@ -15,17 +15,22 @@ export default class ProjectDetails extends Component {
     commitDetails: null,
     shouldRefresh: false,
   };
+  // Use a class property for the Axios cancellation token
+  cancelToken = axios.CancelToken.source();
+
   componentDidMount = () => {
     axios
       .get(`https://api.github.com/repos/${this.props.name}/commits`, params)
-      .then(data => {
+      .then((data) => {
         this.setState({ commitDetails: data.data });
       });
   };
 
   componentDidUpdate = (prevProps) => {
     if (
-      (this.props.isRefreshEnabled && this.state.shouldRefresh && !this.interval) ||
+      (this.props.isRefreshEnabled &&
+        this.state.shouldRefresh &&
+        !this.interval) ||
       prevProps.refreshIntervalMillis !== this.props.refreshIntervalMillis
     ) {
       // Refresh is allowed globally, this component should refresh, but is not refreshing
@@ -39,6 +44,9 @@ export default class ProjectDetails extends Component {
 
   componentWillUnmount() {
     this.stopLocalAutoRefresh();
+
+    // Cancel the Axios request when the component unmounts
+    this.cancelToken.cancel("Component unmounted");
   }
 
   interval = null;
@@ -50,11 +58,26 @@ export default class ProjectDetails extends Component {
 
   startLocalAutoRefresh = () => {
     this.interval = setInterval(() => {
-      axios
-        .get(`https://api.github.com/repos/${this.props.name}/commits`, params)
-        .then(data => this.setState({ commitDetails: data.data }));
+      this.fetchCommitDetails();
     }, this.props.refreshIntervalMillis);
   };
+
+  async fetchCommitDetails() {
+    try {
+      const response = await axios.get(
+        `https://api.github.com/repos/${this.props.name}/commits`,
+        { ...params, cancelToken: this.cancelToken.token } // Pass cancellation token
+      );
+      this.setState({ commitDetails: response.data });
+    } catch (error) {
+      if (axios.isCancel(error)) {
+        // Request was canceled, ignore
+      } else {
+        // Handle other errors
+        console.error(error);
+      }
+    }
+  }
 
   toggleAutoRefresh(e) {
     e.stopPropagation(); // Prevent the click event from being fired on the parent elements as well
@@ -64,7 +87,7 @@ export default class ProjectDetails extends Component {
     }
 
     this.setState(
-      prevState => {
+      (prevState) => {
         return {
           shouldRefresh: !prevState.shouldRefresh,
         };
@@ -80,7 +103,7 @@ export default class ProjectDetails extends Component {
   }
 
   render() {
-    const tableHeading = ["Commiter", "Message", "Date", "changes"]
+    const tableHeading = ["Commiter", "Message", "Date", "changes"];
     if (!this.state.commitDetails) {
       return (
         <div>
@@ -88,16 +111,16 @@ export default class ProjectDetails extends Component {
         </div>
       );
     }
-    let toggleMessage = 'Toggle Auto Refresh OFF';
+    let toggleMessage = "Toggle Auto Refresh OFF";
     if (!this.props.isRefreshEnabled) {
-      toggleMessage = 'Refresh Disabeled Globally';
+      toggleMessage = "Refresh Disabeled Globally";
     } else if (!this.state.shouldRefresh) {
-      toggleMessage = 'Toggle Auto Refresh ON';
+      toggleMessage = "Toggle Auto Refresh ON";
     }
     return (
       <div className="ProjectDetails">
         <button
-          onClick={e => this.toggleAutoRefresh(e)}
+          onClick={(e) => this.toggleAutoRefresh(e)}
           className="autoRefreshButton"
         >
           {toggleMessage}
@@ -105,31 +128,27 @@ export default class ProjectDetails extends Component {
         Commit Details
         <div className="card">
           {tableHeading.map((item, index) => {
-            return (
-                <div className="heading">
-                  {item}
-                </div>
-            )
+            return <div className="heading">{item}</div>;
           })}
         </div>
         <div>
           {this.state.commitDetails.map((details, index) => {
             return (
-                <div className="card">
-                  <div className="name">{details.commit.committer.name}</div>
-                  <div className="message">{details.commit.message}</div>
-                  <div className="date">{details.commit.committer.date}</div>
-                  <div className="changes">
-                    <a
-                      href={details.html_url}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      See changes here
-                    </a>
-                  </div>
+              <div className="card">
+                <div className="name">{details.commit.committer.name}</div>
+                <div className="message">{details.commit.message}</div>
+                <div className="date">{details.commit.committer.date}</div>
+                <div className="changes">
+                  <a
+                    href={details.html_url}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    See changes here
+                  </a>
                 </div>
-            )
+              </div>
+            );
           })}
         </div>
       </div>
